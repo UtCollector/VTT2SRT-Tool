@@ -14,7 +14,7 @@ VTT2SRT-Tool is a simple Windows GUI application that converts WebVTT (.vtt) tra
 
 ## Screenshot
 
-Add screenshots here later.
+![VTT2SRT-Tool Screenshot](screenshots/screenshot.png)
 
 ## Installation
 
