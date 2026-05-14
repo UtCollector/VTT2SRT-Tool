@@ -1,2 +1,2 @@
-# Optional dependency
+# Optional dependency for ffmpeg support
 ffmpeg-python
