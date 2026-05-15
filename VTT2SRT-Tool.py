@@ -1,12 +1,12 @@
-from tkinter import StringVar
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk, StringVar
 from pathlib import Path
-import subprocess
+from datetime import datetime
 import threading
 import os
 import sys
 import re
+import time
 
 from deep_translator import GoogleTranslator
 
@@ -17,7 +17,8 @@ if sys.platform == "win32":
     try:
         import ctypes
         ctypes.windll.user32.ShowWindow(
-            ctypes.windll.kernel32.GetConsoleWindow(), 0
+            ctypes.windll.kernel32.GetConsoleWindow(),
+            0
         )
     except Exception:
         pass
@@ -45,8 +46,8 @@ class VTTConverterApp:
         description = tk.Label(
             self.root,
             text=(
-                "Convert WebVTT (.vtt) subtitle files into SRT subtitles.\n"
-                "Supports batch conversion, TXT export and subtitle translation."
+                "Convert WebVTT (.vtt) subtitle files into clean SRT subtitles.\n"
+                "Supports TXT export and subtitle translation."
             ),
             justify="center"
         )
@@ -79,7 +80,6 @@ class VTTConverterApp:
             height=2
         ).grid(row=0, column=2, padx=5)
 
-        # Main options
         options_frame = tk.LabelFrame(
             self.root,
             text="Extra Options"
@@ -88,7 +88,6 @@ class VTTConverterApp:
 
         self.delete_vtt_var = tk.BooleanVar(value=False)
         self.open_folder_var = tk.BooleanVar(value=True)
-        self.overwrite_var = tk.BooleanVar(value=True)
         self.export_txt_var = tk.BooleanVar(value=True)
 
         tk.Checkbutton(
@@ -105,12 +104,6 @@ class VTTConverterApp:
 
         tk.Checkbutton(
             options_frame,
-            text="Overwrite existing .srt files",
-            variable=self.overwrite_var
-        ).pack(anchor="w", padx=10, pady=2)
-
-        tk.Checkbutton(
-            options_frame,
             text="Export transcript as .txt",
             variable=self.export_txt_var
         ).pack(anchor="w", padx=10, pady=2)
@@ -122,7 +115,6 @@ class VTTConverterApp:
         )
         self.result_label.pack(anchor="e", padx=10, pady=5)
 
-        # Translation section
         translation_frame = tk.LabelFrame(
             self.root,
             text="Subtitle Translation"
@@ -137,13 +129,14 @@ class VTTConverterApp:
             variable=self.enable_translation_var
         ).grid(row=0, column=0, sticky="w", padx=10, pady=5)
 
-        # Source language
         tk.Label(
             translation_frame,
             text="Source Language:"
         ).grid(row=1, column=0, sticky="w", padx=10)
 
-        self.source_language = StringVar(value="Auto Detect")
+        self.source_language = StringVar(
+            value="Auto Detect"
+        )
 
         source_dropdown = ttk.Combobox(
             translation_frame,
@@ -162,15 +155,21 @@ class VTTConverterApp:
             "Japanese"
         )
 
-        source_dropdown.grid(row=1, column=1, padx=10, pady=5)
+        source_dropdown.grid(
+            row=1,
+            column=1,
+            padx=10,
+            pady=5
+        )
 
-        # Target language
         tk.Label(
             translation_frame,
             text="Target Language:"
         ).grid(row=2, column=0, sticky="w", padx=10)
 
-        self.target_language = StringVar(value="English")
+        self.target_language = StringVar(
+            value="English"
+        )
 
         target_dropdown = ttk.Combobox(
             translation_frame,
@@ -188,14 +187,23 @@ class VTTConverterApp:
             "Japanese"
         )
 
-        target_dropdown.grid(row=2, column=1, padx=10, pady=5)
+        target_dropdown.grid(
+            row=2,
+            column=1,
+            padx=10,
+            pady=5
+        )
 
-        # Selected files
         list_frame = tk.LabelFrame(
             self.root,
             text="Selected Files"
         )
-        list_frame.pack(fill="both", expand=True, padx=15, pady=10)
+        list_frame.pack(
+            fill="both",
+            expand=True,
+            padx=15,
+            pady=10
+        )
 
         self.file_list = tk.Listbox(list_frame)
         self.file_list.pack(
@@ -205,9 +213,12 @@ class VTTConverterApp:
             pady=10
         )
 
-        # Progress bar
         progress_frame = tk.Frame(self.root)
-        progress_frame.pack(fill="x", padx=15, pady=10)
+        progress_frame.pack(
+            fill="x",
+            padx=15,
+            pady=10
+        )
 
         self.progress = ttk.Progressbar(
             progress_frame,
@@ -220,7 +231,11 @@ class VTTConverterApp:
             text="Ready.",
             anchor="w"
         )
-        self.status_label.pack(fill="x", padx=15, pady=(0, 10))
+        self.status_label.pack(
+            fill="x",
+            padx=15,
+            pady=(0, 10)
+        )
 
     def log_status(self, text):
         self.status_label.config(text=text)
@@ -246,7 +261,9 @@ class VTTConverterApp:
         if not folder:
             return
 
-        vtt_files = list(Path(folder).glob("*.vtt"))
+        vtt_files = list(
+            Path(folder).glob("*.vtt")
+        )
 
         if not vtt_files:
             messagebox.showwarning(
@@ -255,7 +272,10 @@ class VTTConverterApp:
             )
             return
 
-        self.selected_files = [str(f) for f in vtt_files]
+        self.selected_files = [
+            str(f) for f in vtt_files
+        ]
+
         self.refresh_file_list()
 
     def refresh_file_list(self):
@@ -284,6 +304,7 @@ class VTTConverterApp:
 
     def convert_files(self):
         total = len(self.selected_files)
+
         converted = 0
         failed = 0
 
@@ -298,9 +319,11 @@ class VTTConverterApp:
             srt_path = vtt_path.with_suffix(".srt")
             txt_path = vtt_path.with_suffix(".txt")
 
-            self.log_status(f"Converting: {vtt_path.name}")
+            self.log_status(
+                f"Converting: {vtt_path.name}"
+            )
 
-            success = self.convert_vtt_to_srt(
+            success = self.convert_manually(
                 vtt_path,
                 srt_path
             )
@@ -309,16 +332,24 @@ class VTTConverterApp:
                 converted += 1
 
                 if self.export_txt_var.get():
-                    self.export_txt(vtt_path, txt_path)
+                    self.export_txt(
+                        vtt_path,
+                        txt_path
+                    )
 
                 if self.enable_translation_var.get():
-                    self.translate_srt(srt_path)
+                    self.translate_srt(
+                        srt_path
+                    )
 
                 if self.delete_vtt_var.get():
                     try:
-                        vtt_path.unlink(missing_ok=True)
+                        vtt_path.unlink(
+                            missing_ok=True
+                        )
                     except Exception:
                         pass
+
             else:
                 failed += 1
 
@@ -333,91 +364,243 @@ class VTTConverterApp:
             f"Done. {converted} successful, {failed} failed."
         )
 
-        if self.open_folder_var.get() and self.selected_files:
+        if (
+            self.open_folder_var.get()
+            and self.selected_files
+        ):
             try:
                 os.startfile(
-                    str(Path(self.selected_files[0]).parent)
+                    str(
+                        Path(
+                            self.selected_files[0]
+                        ).parent
+                    )
                 )
             except Exception:
                 pass
 
-    def convert_vtt_to_srt(self, vtt_path, srt_path):
-        if self.check_ffmpeg():
-            success = self.convert_with_ffmpeg(
-                vtt_path,
-                srt_path
-            )
+    def subtitle_duration_ms(
+        self,
+        start,
+        end
+    ):
+        fmt = "%H:%M:%S,%f"
 
-            if success:
-                return True
-
-        return self.convert_manually(
-            vtt_path,
-            srt_path
+        start_dt = datetime.strptime(
+            start,
+            fmt
         )
 
-    def check_ffmpeg(self):
-        try:
-            subprocess.run(
-                ["ffmpeg", "-version"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            return True
-        except Exception:
-            return False
+        end_dt = datetime.strptime(
+            end,
+            fmt
+        )
 
-    def convert_with_ffmpeg(self, vtt_path, srt_path):
-        try:
-            subprocess.run(
-                [
-                    "ffmpeg",
-                    "-y",
-                    "-i",
-                    str(vtt_path),
-                    str(srt_path)
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=True
-            )
-            return True
+        return (
+            end_dt - start_dt
+        ).total_seconds() * 1000
 
-        except Exception:
-            return False
-
-    def convert_manually(self, vtt_path, srt_path):
+    def convert_manually(
+        self,
+        vtt_path,
+        srt_path
+    ):
         try:
-            with open(vtt_path, "r", encoding="utf-8") as f:
+            with open(
+                vtt_path,
+                "r",
+                encoding="utf-8"
+            ) as f:
                 lines = f.readlines()
 
             output_lines = []
+
             counter = 1
+            skip_next_text = False
 
             for line in lines:
                 line = line.rstrip("\n")
 
+                if skip_next_text:
+                    if line.strip() == "":
+                        skip_next_text = False
+                    continue
+
                 if line.strip() == "WEBVTT":
                     continue
 
+                if line.startswith("NOTE"):
+                    continue
+
                 if "-->" in line:
-                    output_lines.append(str(counter))
+                    line = line.split(
+                        " align:"
+                    )[0]
+
+                    line = line.replace(
+                        ".",
+                        ","
+                    )
+
+                    try:
+                        parts = line.split(
+                            " --> "
+                        )
+
+                        start = parts[0].strip()
+                        end = parts[1].strip()
+
+                        duration = (
+                            self.subtitle_duration_ms(
+                                start,
+                                end
+                            )
+                        )
+
+                        # Remove ultra-short rolling captions
+                        if duration < 120:
+                            skip_next_text = True
+                            continue
+
+                    except Exception:
+                        pass
+
+                    output_lines.append(
+                        str(counter)
+                    )
+
                     counter += 1
-                    line = line.replace(".", ",")
+
+                    output_lines.append(line)
+
+                    continue
+
+                line = re.sub(
+                    r"<\d{2}:\d{2}:\d{2}\.\d{3}>",
+                    "",
+                    line
+                )
+
+                line = re.sub(
+                    r"</?c>",
+                    "",
+                    line
+                )
+
+                line = re.sub(
+                    r"<[^>]+>",
+                    "",
+                    line
+                )
+
+                line = line.strip()
+
+                if line == "":
+                    output_lines.append("")
+                    continue
 
                 output_lines.append(line)
 
-            with open(srt_path, "w", encoding="utf-8") as f:
-                f.write("\n".join(output_lines))
+            # Remove duplicate empty lines
+            cleaned_output = []
+
+            previous_empty = False
+
+            for line in output_lines:
+                if line == "":
+                    if previous_empty:
+                        continue
+                    previous_empty = True
+                else:
+                    previous_empty = False
+
+                cleaned_output.append(line)
+
+            # Cleanup rolling captions
+            final_output = []
+
+            previous_last_line = ""
+
+            i = 0
+
+            while i < len(cleaned_output):
+                line = cleaned_output[i]
+
+                if line.isdigit():
+                    final_output.append(line)
+
+                    if i + 1 < len(cleaned_output):
+                        final_output.append(
+                            cleaned_output[i + 1]
+                        )
+
+                    subtitle_lines = []
+
+                    j = i + 2
+
+                    while j < len(cleaned_output):
+                        current = cleaned_output[j]
+
+                        if current == "":
+                            break
+
+                        subtitle_lines.append(
+                            current
+                        )
+
+                        j += 1
+
+                    if (
+                        subtitle_lines
+                        and previous_last_line
+                        and subtitle_lines[0]
+                        == previous_last_line
+                    ):
+                        subtitle_lines.pop(0)
+
+                    if subtitle_lines:
+                        previous_last_line = (
+                            subtitle_lines[-1]
+                        )
+
+                    final_output.extend(
+                        subtitle_lines
+                    )
+
+                    final_output.append("")
+
+                    i = j
+
+                i += 1
+
+            with open(
+                srt_path,
+                "w",
+                encoding="utf-8-sig"
+            ) as f:
+                f.write(
+                    "\n".join(final_output)
+                )
 
             return True
 
-        except Exception:
+        except Exception as e:
+            print(
+                f"Conversion error: {e}"
+            )
             return False
 
-    def export_txt(self, vtt_path, txt_path):
+    def export_txt(
+        self,
+        vtt_path,
+        txt_path
+    ):
         try:
-            with open(vtt_path, "r", encoding="utf-8") as f:
+            with open(
+                vtt_path,
+                "r",
+                encoding="utf-8"
+            ) as f:
                 lines = f.readlines()
 
             cleaned_lines = []
@@ -434,18 +617,30 @@ class VTTConverterApp:
                 if "-->" in line:
                     continue
 
-                if re.match(r"^\d+$", line):
+                if re.match(
+                    r"^\d+$",
+                    line
+                ):
                     continue
 
                 cleaned_lines.append(line)
 
-            with open(txt_path, "w", encoding="utf-8") as f:
-                f.write("\n".join(cleaned_lines))
+            with open(
+                txt_path,
+                "w",
+                encoding="utf-8-sig"
+            ) as f:
+                f.write(
+                    "\n".join(cleaned_lines)
+                )
 
         except Exception:
             pass
 
-    def translate_srt(self, srt_path):
+    def translate_srt(
+        self,
+        srt_path
+    ):
         try:
             language_map = {
                 "English": "en",
@@ -465,7 +660,11 @@ class VTTConverterApp:
                 f"{srt_path.stem}.{target_lang}.srt"
             )
 
-            with open(srt_path, "r", encoding="utf-8") as f:
+            with open(
+                srt_path,
+                "r",
+                encoding="utf-8-sig"
+            ) as f:
                 lines = f.readlines()
 
             translated_lines = []
@@ -478,29 +677,42 @@ class VTTConverterApp:
             for line in lines:
                 stripped = line.strip()
 
-                # Keep subtitle numbering
                 if stripped.isdigit():
                     translated_lines.append(line)
                     continue
 
-                # Keep timestamps
                 if "-->" in line:
                     translated_lines.append(line)
                     continue
 
-                # Keep empty lines
                 if not stripped:
                     translated_lines.append(line)
                     continue
 
                 try:
-                    translated_text = translator.translate(stripped)
-                    translated_lines.append(translated_text + "\n")
+                    translated_text = (
+                        translator.translate(
+                            stripped
+                        )
+                    )
+
+                    time.sleep(0.15)
+
+                    translated_lines.append(
+                        translated_text + "\n"
+                    )
+
                 except Exception:
                     translated_lines.append(line)
 
-            with open(translated_path, "w", encoding="utf-8") as f:
-                f.writelines(translated_lines)
+            with open(
+                translated_path,
+                "w",
+                encoding="utf-8-sig"
+            ) as f:
+                f.writelines(
+                    translated_lines
+                )
 
             return True
 
@@ -510,5 +722,7 @@ class VTTConverterApp:
 
 if __name__ == "__main__":
     root = tk.Tk()
+
     app = VTTConverterApp(root)
+
     root.mainloop()
