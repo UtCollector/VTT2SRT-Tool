@@ -98,6 +98,15 @@ To improve compatibility, all generated `.srt` subtitle files are saved as:
 ```text
 UTF-8 with BOM (utf-8-sig)
 
+This improves compatibility with:
+
+VLC
+Kodi
+Plex
+MPC-HC
+Smart TVs
+MKV players
+
 MIT License
 
 GitHub
