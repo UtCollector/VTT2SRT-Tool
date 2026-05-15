@@ -1,3 +1,4 @@
+from tkinter import StringVar
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from pathlib import Path
@@ -5,14 +6,19 @@ import subprocess
 import threading
 import os
 import sys
+import re
+
+from deep_translator import GoogleTranslator
 
 APP_TITLE = "VTT2SRT-Tool"
 
-# Verberg consolevenster op Windows
+# Hide console window on Windows
 if sys.platform == "win32":
     try:
         import ctypes
-        ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
+        ctypes.windll.user32.ShowWindow(
+            ctypes.windll.kernel32.GetConsoleWindow(), 0
+        )
     except Exception:
         pass
 
@@ -21,7 +27,7 @@ class VTTConverterApp:
     def __init__(self, root):
         self.root = root
         self.root.title(APP_TITLE)
-        self.root.geometry("720x520")
+        self.root.geometry("900x720")
 
         self.selected_files = []
         self.base_dir = Path(__file__).parent
@@ -32,34 +38,34 @@ class VTTConverterApp:
         title = tk.Label(
             self.root,
             text="VTT2SRT-Tool",
-            font=("Segoe UI", 18, "bold")
+            font=("Segoe UI", 20, "bold")
         )
-        title.pack(pady=12)
+        title.pack(pady=10)
 
         description = tk.Label(
             self.root,
             text=(
-                "Convert WebVTT (.vtt) transcript files automatically into SRT subtitles.\n"
-                "Supports multiple files and folder conversion."
+                "Convert WebVTT (.vtt) subtitle files into SRT subtitles.\n"
+                "Supports batch conversion, TXT export and subtitle translation."
             ),
             justify="center"
         )
-        description.pack(pady=4)
+        description.pack(pady=5)
 
         button_frame = tk.Frame(self.root)
         button_frame.pack(pady=10)
 
         tk.Button(
             button_frame,
-            text="Select .vtt files",
+            text="Select .vtt Files",
             command=self.select_files,
-            width=28,
+            width=24,
             height=2
         ).grid(row=0, column=0, padx=5)
 
         tk.Button(
             button_frame,
-            text="Select folder",
+            text="Select Folder",
             command=self.select_folder,
             width=20,
             height=2
@@ -67,30 +73,23 @@ class VTTConverterApp:
 
         tk.Button(
             button_frame,
-            text="Convert to SRT",
+            text="Convert",
             command=self.start_conversion,
-            width=24,
+            width=22,
             height=2
         ).grid(row=0, column=2, padx=5)
 
-        options_frame = tk.LabelFrame(self.root, text="Extra options")
-        options_frame.pack(fill="x", padx=15, pady=10)
-
-        result_frame = tk.Frame(self.root)
-        result_frame.pack(fill="x", padx=15, pady=(0, 10))
-
-        self.result_label = tk.Label(
-            result_frame,
-            text="Successful: 0 | Failed: 0",
-            font=("Segoe UI", 10, "bold"),
-            anchor="e"
+        # Main options
+        options_frame = tk.LabelFrame(
+            self.root,
+            text="Extra Options"
         )
-
-        self.result_label.pack(side="right", padx=10)
+        options_frame.pack(fill="x", padx=15, pady=10)
 
         self.delete_vtt_var = tk.BooleanVar(value=False)
         self.open_folder_var = tk.BooleanVar(value=True)
         self.overwrite_var = tk.BooleanVar(value=True)
+        self.export_txt_var = tk.BooleanVar(value=True)
 
         tk.Checkbutton(
             options_frame,
@@ -110,16 +109,110 @@ class VTTConverterApp:
             variable=self.overwrite_var
         ).pack(anchor="w", padx=10, pady=2)
 
-        list_frame = tk.LabelFrame(self.root, text="Selected files")
+        tk.Checkbutton(
+            options_frame,
+            text="Export transcript as .txt",
+            variable=self.export_txt_var
+        ).pack(anchor="w", padx=10, pady=2)
+
+        self.result_label = tk.Label(
+            options_frame,
+            text="Successful: 0 | Failed: 0",
+            font=("Segoe UI", 10, "bold")
+        )
+        self.result_label.pack(anchor="e", padx=10, pady=5)
+
+        # Translation section
+        translation_frame = tk.LabelFrame(
+            self.root,
+            text="Subtitle Translation"
+        )
+        translation_frame.pack(fill="x", padx=15, pady=10)
+
+        self.enable_translation_var = tk.BooleanVar(value=False)
+
+        tk.Checkbutton(
+            translation_frame,
+            text="Enable subtitle translation",
+            variable=self.enable_translation_var
+        ).grid(row=0, column=0, sticky="w", padx=10, pady=5)
+
+        # Source language
+        tk.Label(
+            translation_frame,
+            text="Source Language:"
+        ).grid(row=1, column=0, sticky="w", padx=10)
+
+        self.source_language = StringVar(value="Auto Detect")
+
+        source_dropdown = ttk.Combobox(
+            translation_frame,
+            textvariable=self.source_language,
+            state="readonly",
+            width=25
+        )
+
+        source_dropdown["values"] = (
+            "Auto Detect",
+            "English",
+            "Dutch",
+            "German",
+            "French",
+            "Spanish",
+            "Japanese"
+        )
+
+        source_dropdown.grid(row=1, column=1, padx=10, pady=5)
+
+        # Target language
+        tk.Label(
+            translation_frame,
+            text="Target Language:"
+        ).grid(row=2, column=0, sticky="w", padx=10)
+
+        self.target_language = StringVar(value="English")
+
+        target_dropdown = ttk.Combobox(
+            translation_frame,
+            textvariable=self.target_language,
+            state="readonly",
+            width=25
+        )
+
+        target_dropdown["values"] = (
+            "English",
+            "Dutch",
+            "German",
+            "French",
+            "Spanish",
+            "Japanese"
+        )
+
+        target_dropdown.grid(row=2, column=1, padx=10, pady=5)
+
+        # Selected files
+        list_frame = tk.LabelFrame(
+            self.root,
+            text="Selected Files"
+        )
         list_frame.pack(fill="both", expand=True, padx=15, pady=10)
 
-        self.file_list = tk.Listbox(list_frame, height=12)
-        self.file_list.pack(fill="both", expand=True, padx=10, pady=10)
+        self.file_list = tk.Listbox(list_frame)
+        self.file_list.pack(
+            fill="both",
+            expand=True,
+            padx=10,
+            pady=10
+        )
 
+        # Progress bar
         progress_frame = tk.Frame(self.root)
         progress_frame.pack(fill="x", padx=15, pady=10)
 
-        self.progress = ttk.Progressbar(progress_frame, mode="determinate")
+        self.progress = ttk.Progressbar(
+            progress_frame,
+            mode="determinate"
+        )
         self.progress.pack(fill="x")
 
         self.status_label = tk.Label(
@@ -135,9 +228,9 @@ class VTTConverterApp:
 
     def select_files(self):
         files = filedialog.askopenfilenames(
-            title="Select VTT files",
+            title="Select VTT Files",
             initialdir=self.base_dir,
-            filetypes=[("WebVTT", "*.vtt")]
+            filetypes=[("WebVTT Files", "*.vtt")]
         )
 
         if files:
@@ -146,7 +239,7 @@ class VTTConverterApp:
 
     def select_folder(self):
         folder = filedialog.askdirectory(
-            title="Select folder",
+            title="Select Folder",
             initialdir=self.base_dir
         )
 
@@ -157,7 +250,7 @@ class VTTConverterApp:
 
         if not vtt_files:
             messagebox.showwarning(
-                "No files",
+                "No Files",
                 "No .vtt files found in this folder."
             )
             return
@@ -171,17 +264,22 @@ class VTTConverterApp:
         for file in self.selected_files:
             self.file_list.insert(tk.END, file)
 
-        self.log_status(f"{len(self.selected_files)} file(s) loaded.")
+        self.log_status(
+            f"{len(self.selected_files)} file(s) loaded."
+        )
 
     def start_conversion(self):
         if not self.selected_files:
             messagebox.showwarning(
-                "No files",
-                "Please select at least one .vtt file first."
+                "No Files",
+                "Please select at least one .vtt file."
             )
             return
 
-        thread = threading.Thread(target=self.convert_files, daemon=True)
+        thread = threading.Thread(
+            target=self.convert_files,
+            daemon=True
+        )
         thread.start()
 
     def convert_files(self):
@@ -192,20 +290,29 @@ class VTTConverterApp:
         self.progress["maximum"] = total
         self.progress["value"] = 0
 
-        for index, file_path in enumerate(self.selected_files, start=1):
+        for index, file_path in enumerate(
+            self.selected_files,
+            start=1
+        ):
             vtt_path = Path(file_path)
             srt_path = vtt_path.with_suffix(".srt")
+            txt_path = vtt_path.with_suffix(".txt")
 
             self.log_status(f"Converting: {vtt_path.name}")
 
-            if srt_path.exists() and not self.overwrite_var.get():
-                failed += 1
-                continue
-
-            success = self.convert_vtt_to_srt(vtt_path, srt_path)
+            success = self.convert_vtt_to_srt(
+                vtt_path,
+                srt_path
+            )
 
             if success:
                 converted += 1
+
+                if self.export_txt_var.get():
+                    self.export_txt(vtt_path, txt_path)
+
+                if self.enable_translation_var.get():
+                    self.translate_srt(srt_path)
 
                 if self.delete_vtt_var.get():
                     try:
@@ -218,34 +325,43 @@ class VTTConverterApp:
             self.progress["value"] = index
             self.root.update_idletasks()
 
+        self.result_label.config(
+            text=f"Successful: {converted} | Failed: {failed}"
+        )
+
         self.log_status(
-            f"Ready. {converted} succesvol, {failed} mislukt."
+            f"Done. {converted} successful, {failed} failed."
         )
 
         if self.open_folder_var.get() and self.selected_files:
-            folder = str(Path(self.selected_files[0]).parent)
             try:
-                os.startfile(folder)
+                os.startfile(
+                    str(Path(self.selected_files[0]).parent)
+                )
             except Exception:
                 pass
 
-        self.result_label.config(text=f"Successful: {converted} | Failed: {failed}")
-
     def convert_vtt_to_srt(self, vtt_path, srt_path):
-        ffmpeg_exists = self.check_ffmpeg()
+        if self.check_ffmpeg():
+            success = self.convert_with_ffmpeg(
+                vtt_path,
+                srt_path
+            )
 
-        if ffmpeg_exists:
-            return self.convert_with_ffmpeg(vtt_path, srt_path)
+            if success:
+                return True
 
-        return self.convert_manually(vtt_path, srt_path)
+        return self.convert_manually(
+            vtt_path,
+            srt_path
+        )
 
     def check_ffmpeg(self):
         try:
             subprocess.run(
                 ["ffmpeg", "-version"],
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False
+                stderr=subprocess.DEVNULL
             )
             return True
         except Exception:
@@ -293,6 +409,98 @@ class VTTConverterApp:
 
             with open(srt_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(output_lines))
+
+            return True
+
+        except Exception:
+            return False
+
+    def export_txt(self, vtt_path, txt_path):
+        try:
+            with open(vtt_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+
+            cleaned_lines = []
+
+            for line in lines:
+                line = line.strip()
+
+                if not line:
+                    continue
+
+                if line == "WEBVTT":
+                    continue
+
+                if "-->" in line:
+                    continue
+
+                if re.match(r"^\d+$", line):
+                    continue
+
+                cleaned_lines.append(line)
+
+            with open(txt_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(cleaned_lines))
+
+        except Exception:
+            pass
+
+    def translate_srt(self, srt_path):
+        try:
+            language_map = {
+                "English": "en",
+                "Dutch": "nl",
+                "German": "de",
+                "French": "fr",
+                "Spanish": "es",
+                "Japanese": "ja"
+            }
+
+            target_lang = language_map.get(
+                self.target_language.get(),
+                "en"
+            )
+
+            translated_path = srt_path.with_name(
+                f"{srt_path.stem}.{target_lang}.srt"
+            )
+
+            with open(srt_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+
+            translated_lines = []
+
+            translator = GoogleTranslator(
+                source="auto",
+                target=target_lang
+            )
+
+            for line in lines:
+                stripped = line.strip()
+
+                # Keep subtitle numbering
+                if stripped.isdigit():
+                    translated_lines.append(line)
+                    continue
+
+                # Keep timestamps
+                if "-->" in line:
+                    translated_lines.append(line)
+                    continue
+
+                # Keep empty lines
+                if not stripped:
+                    translated_lines.append(line)
+                    continue
+
+                try:
+                    translated_text = translator.translate(stripped)
+                    translated_lines.append(translated_text + "\n")
+                except Exception:
+                    translated_lines.append(line)
+
+            with open(translated_path, "w", encoding="utf-8") as f:
+                f.writelines(translated_lines)
 
             return True
 
