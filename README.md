@@ -1,6 +1,6 @@
 # VTT2SRT-Tool
 
-VTT2SRT-Tool is a simple Windows GUI application that converts WebVTT (.vtt) transcript files into SRT subtitle files. Supports batch conversion, folder processing, optional ffmpeg integration, and an easy-to-use interface. The translation takes a long time, so don't think that nothing is happening.
+VTT2SRT-Tool is a simple Windows GUI application that converts WebVTT (.vtt) transcript files into SRT subtitle files. Supports batch conversion, folder processing, optional ffmpeg integration, and an easy-to-use interface. The translation takes a long time, so don't think that nothing is happening. This tool can now translate into 6 languages.
 
 ## Functies:
 
